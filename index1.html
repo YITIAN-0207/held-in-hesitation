@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+<title>Held in Hesitation</title>
+
+<!-- IPA 字体（仅用于音标行） -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+IPA:wght@400&display=swap" rel="stylesheet" />
+
+<style>
+/* === ABC Oracle Webfont (Local) === */
+@font-face {
+  font-family: 'ABC Oracle';
+  src: url('assets/fonts/ABCOracle-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ABC Oracle';
+  src: url('assets/fonts/ABCOracle-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ABC Oracle';
+  src: url('assets/fonts/ABCOracle-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root{ --bg:#000; --fg:#fff; --muted:#999; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  height:100%;
+  background:var(--bg);
+  color:var(--fg);
+  font-family: 'ABC Oracle', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  scroll-behavior:smooth;
+}
+section{
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  text-align:center; padding:4rem 1.5rem; position:relative;
+}
+h1,h2,p{ transition: filter .6s, opacity .6s, transform .6s; }
+h1{
+  font-size:clamp(48px,10vw,140px);
+  letter-spacing:.03em; display:inline-block;
+}
+h1 span{ display:inline-block; }
+h2{
+  font-size:clamp(24px,5vw,64px);
+  margin-bottom:1rem;
+}
+p{
+  max-width:72ch; line-height:1.6; font-size:1rem; margin-bottom:1rem;
+}
+button{
+  background:none; border:1px solid var(--fg); color:var(--fg);
+  padding:.6rem 1.4rem; cursor:pointer; transition:all .3s ease;
+  margin-top:1rem; font-size:1rem;
+}
+button:hover{ color:#000; background:var(--fg); }
+.scroll-cue{
+  position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+  color:var(--muted); font-size:.8rem;
+}
+.disintegrate{ will-change: transform, filter, opacity; }
+
+/* 第四页档案区 */
+.card-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1.5rem; width:100%; max-width:1200px; padding:2rem;
+}
+.card{
+  border:1px solid #333; padding:1rem;
+  transition: transform .4s, box-shadow .4s;
+}
+.card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 0 10px rgba(255,255,255,.15);
+}
+.card img{
+  width:100%; height:auto; display:block;
+  border-radius:8px;
+  box-shadow:0 0 0 1px #222, 0 4px 8px rgba(255,255,255,0.05);
+  transition: transform .6s ease;
+}
+
+/* 回到顶部按钮 */
+.to-top{
+  position:fixed; right:32px; bottom:32px;
+  border:1px solid var(--fg); padding:.6rem 1.2rem;
+  background:none; color:var(--fg); cursor:pointer; transition:all .3s;
+}
+.to-top:hover{ background:var(--fg); color:#000; }
+
+/* IPA 行 */
+.ipa{
+  font-family:'Noto Sans IPA','Noto Sans',sans-serif;
+  font-size:1.5rem; opacity:.85; margin-top:1rem;
+}
+
+/* p5 容器与按钮居中 */
+/* === 全屏 p5 交互区域 === */
+/* 第三页：让交互画布“超出框”但只在这一页生效 */
+#page3{
+  position: relative;
+  overflow: visible;   /* 允许内部内容溢出 section 边界一点点 */
+}
+
+/* 交互画布容器：放大、拉到整屏高，略超出宽度 */
+#p5-container{
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);  /* 水平居中 */
+  width: 120vw;                 /* ⭐ 比视口稍宽一点，产生“冲出边界”的感觉 */
+  height: 100vh;                /* ⭐ 不再是 60vh，而是整屏高度 */
+  border: none;                 /* 去掉那条框线 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  z-index: 0;                   /* 在背景层 */
+}
+
+/* 确保标题、按钮浮在画布上方，而不是被盖住 */
+#page3 > h2,
+#page3 > .controls,
+#page3 > #upload-btn{
+  position: relative;
+  z-index: 1;
+}
+.controls{
+  display:flex; align-items:center; justify-content:center; gap:16px; margin-top:12px;
+}
+
+/* === 浮动装饰层 === */
+.float-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 漂浮贴图样式增强版 */
+.float-deco {
+  position: absolute;
+  width: clamp(40px, 7vw, 120px); /* ✅ 更小更精致 */
+  opacity: 0.45;                  /* ✅ 提高可见度 */
+  mix-blend-mode: screen;         /* ✅ 黑底上更亮 */
+  filter:
+    drop-shadow(0 0 6px rgba(255,255,255,0.35))
+    brightness(1.2)
+    contrast(1.15);
+  image-rendering: high-quality;  /* ✅ 保证清晰不糊 */
+}
+/* ✅ 隐藏滚动条但保持可滚动 */
+html {
+  scrollbar-width: none;      /* Firefox */
+}
+body::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari, Edge */
+}
+
+</style>
+</head>
+<body>
+
+<!-- 1️⃣ 第一页：主标题 + IPA + 简介 -->
+<section id="page1">
+  <!-- 漂浮层（4 张 PNG） -->
+  <div class="float-layer">
+    <img src="assets/float01.png" class="float-deco" alt="">
+    <img src="assets/float02.png" class="float-deco" alt="">
+    <img src="assets/float03.png" class="float-deco" alt="">
+    <img src="assets/float04.png" class="float-deco" alt="">
+  </div>
+
+  <h1 id="main-title" aria-label="HELD IN HESITATION">
+    <span>H</span><span>E</span><span>L</span><span>D</span>
+    <span>&nbsp;</span>
+    <span>I</span><span>N</span>
+    <br />
+    <span>H</span><span>E</span><span>S</span><span>I</span><span>T</span><span>A</span><span>T</span><span>I</span><span>O</span><span>N</span>
+  </h1>
+  <div class="ipa">/ˌhez.ɪˈteɪ.ʃən/</div>
+  <p class="disintegrate intro">
+    Hesitation is not a flaw but a surface—where expression fractures into feeling, and speech softens into resonance.
+    Scroll to explore how language breaks, listens, and reforms.
+  </p>
+  <div class="scroll-cue">Scroll ↓</div>
+</section>
+
+<!-- 2️⃣ 第二页：使用说明 -->
+<section id="page2">
+  <div class="float-layer">
+    <img src="assets/float01.png" class="float-deco" alt="">
+    <img src="assets/float02.png" class="float-deco" alt="">
+    <img src="assets/float03.png" class="float-deco" alt="">
+    <img src="assets/float04.png" class="float-deco" alt="">
+  </div>
+
+  <h2 class="disintegrate">How to Participate</h2>
+  <p class="disintegrate">
+    Try answering the next page’s question aloud.<br />
+    Your voice will sculpt a generative pattern.<br />
+    Click “Upload” to archive it. Use “Pause/Continue” to control the session.<br />
+    Speak, pause—let hesitation guide the form.
+  </p>
+  <button id="next-btn" aria-label="Go to Interaction">Go to Interaction</button>
+</section>
+
+<!-- 3️⃣ 第三页：主要交互 -->
+<section id="page3">
+  <div class="float-layer">
+    <img src="assets/float01.png" class="float-deco" alt="">
+    <img src="assets/float02.png" class="float-deco" alt="">
+    <img src="assets/float03.png" class="float-deco" alt="">
+    <img src="assets/float04.png" class="float-deco" alt="">
+  </div>
+
+  <h2 id="question" class="disintegrate">What is your favourite colour?</h2>
+  <div id="p5-container"><!-- p5 canvas mounts here --></div>
+  <div class="controls">
+    <button id="start-btn">Start</button>
+    <button id="pause-btn">Pause</button>
+  </div>
+  <button id="upload-btn">Upload to Archive</button>
+</section>
+
+<!-- 4️⃣ 第四页：档案 -->
+<section id="page4">
+  <div class="float-layer">
+    <img src="assets/float01.png" class="float-deco" alt="">
+    <img src="assets/float02.png" class="float-deco" alt="">
+    <img src="assets/float03.png" class="float-deco" alt="">
+    <img src="assets/float04.png" class="float-deco" alt="">
+  </div>
+
+  <h2 class="disintegrate">Collected Responses</h2>
+  <div class="card-grid" id="archive"></div>
+</section>
+
+<!-- 5️⃣ 第五页：返回顶部 -->
+<section id="page5">
+  <button id="toTopBtn" class="to-top">↑ Back to Top</button>
+</section>
+
+<!-- 库（确保顺序：GSAP → ScrollTrigger → p5 → p5.sound → 你的脚本） -->
+<script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.min.js"></script>
+<script src="sound_orbit.js"></script>
+
+<script>
+/* 小工具 */
+
+function tryCall(fn, ...args){
+  try{ return typeof fn === 'function' ? fn(...args) : undefined; }
+  catch(e){ console.warn('Optional fn error:', e); }
+}
+function safeResetCanvas(){
+  const c = document.querySelector('#p5-container canvas');
+  if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }
+}
+
+/* 等到所有脚本加载完毕再执行（避免 gsap 未定义） */
+window.addEventListener('load', () => {
+  if (typeof gsap === 'undefined') {
+    console.error('GSAP 未加载成功，请检查网络或 <script src="...gsap.min.js"> 路径。');
+    return;
+  }
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* === 标题多方向崩解（随滚动，反向复原） === */
+  const titleSpans = document.querySelectorAll('#main-title span');
+  gsap.to(titleSpans, {
+    x: () => gsap.utils.random(-80, 80),
+    y: () => gsap.utils.random(-60, 60),
+    rotate: () => gsap.utils.random(-10, 10),
+    opacity: 0.3,
+    filter: 'blur(6px)',
+    scrollTrigger: {
+      trigger: '#main-title',
+      start: 'top 60%',
+      end: 'bottom 10%',
+      scrub: true,
+      onLeaveBack: () => gsap.to(titleSpans, { x:0, y:0, rotate:0, opacity:1, filter:'blur(0px)', duration:0.4 })
+    }
+  });
+
+  /* === 普通文本滚动崩解（先清晰→滚动开始再模糊；上滑复原） === */
+  document.querySelectorAll('.disintegrate').forEach(el=>{
+    gsap.fromTo(el,
+      { filter:'blur(0px)', opacity:1, scale:1 },
+      { filter:'blur(6px)', opacity:0.3, scale:1.05,
+        scrollTrigger:{
+          trigger: el,
+          start: 'top 65%',
+          end: 'bottom 20%',
+          scrub: true,
+          onLeaveBack: () => gsap.to(el, { filter:'blur(0px)', opacity:1, scale:1, duration:0.5 })
+        }
+      });
+  });
+
+  /* === 题库（顺滑切换 + 去抖） === */
+  const questions = [
+  // 日常 / 轻松
+  "What colour feels most like your voice?",
+  "Which sound calms you in the morning?",
+  "Where does your body feel most at ease?",
+  "What texture brings you quiet comfort?",
+  "When does silence feel safe to you?",
+  "Which word feels gentle to say aloud?",
+
+  // 观感 / 感受
+  "When does your voice feel most steady?",
+  "Describe a pause that felt generous.",
+  "How does your body react to hesitation?",
+  "What does taking your time mean to you?",
+  "How do you want others to listen to you?",
+  "What space helps you speak more freely?",
+
+  // 语言与中断
+  "Have you ever lost words while speaking?",
+  "What happens inside when speech breaks?",
+  "How do you repair a broken sentence?",
+  "Can interruption also be an act of care?",
+  "When did hesitation become expression?",
+  "What does a kind interruption sound like?",
+
+  // 经验 / 立场
+  "Recall a moment you chose to stay silent.",
+  "How has your view of silence changed?",
+  "Where does your language start to tremble?",
+  "What do your pauses ask listeners to feel?",
+  "What might a softer conversation look like?",
+  "How do you carry uncertainty in your voice?"
+];
+  let qIdx = 0, questionAnimating = false;
+  const qEl = document.getElementById('question');
+
+  function smoothSwitchQuestion(nextIndex){
+    if (questionAnimating) return;
+    questionAnimating = true;
+    const tl = gsap.timeline({
+      onComplete: ()=> { questionAnimating = false; }
+    });
+    tl.to(qEl, { opacity:0, y:8, filter:'blur(6px)', duration:0.35, ease:'power2.out' })
+      .add(()=>{ qEl.textContent = questions[nextIndex]; })
+      .to(qEl, { opacity:1, y:0, filter:'blur(0px)', duration:0.55, ease:'power2.out' });
+  }
+
+  setInterval(()=>{
+    qIdx = (qIdx + 1) % questions.length;
+    smoothSwitchQuestion(qIdx);
+  }, 8000);
+
+  /* 跳转到交互页 */
+  document.getElementById('next-btn')?.addEventListener('click', ()=>{
+    window.scrollTo({ top: document.getElementById('page3').offsetTop, behavior:'smooth' });
+  });
+
+  /* === 上传至档案：截屏 + 当前题目 → 卡片 === */
+  const archive = document.getElementById('archive');
+  function animateCard(card){
+    gsap.from(card, {
+      opacity:0, y:40, duration:1.1, ease:'power2.out',
+      scrollTrigger:{ trigger:card, start:'top 85%', toggleActions:'play none none reverse' }
+    });
+    const img = card.querySelector('img');
+    if (img) gsap.to(img, { y:-8, duration:2, repeat:-1, yoyo:true, ease:'sine.inOut' });
+  }
+  document.getElementById('upload-btn')?.addEventListener('click', ()=>{
+    const currentQ = qEl.textContent.trim();
+    const canvas = document.querySelector('#p5-container canvas');
+    if (!canvas) { alert('Canvas 未就绪，请先点击 Start 并发出声音生成图案。'); return; }
+    const dataURL = canvas.toDataURL('image/png');
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<p><strong>Q:</strong> ${currentQ}</p><img src="${dataURL}" alt="Generated pattern" />`;
+    archive.prepend(card);
+    animateCard(card);
+    window.scrollTo({ top: document.getElementById('page4').offsetTop, behavior:'smooth' });
+
+    qIdx = (qIdx + 1) % questions.length;
+    smoothSwitchQuestion(qIdx);
+  });
+
+  /* Start / Pause(Continue) 切换 */
+  let isPaused = false;
+  document.getElementById('start-btn')?.addEventListener('click', ()=>{
+    tryCall(window.startSketch); // 可选：由你的 p5 脚本实现
+  });
+  document.getElementById('pause-btn')?.addEventListener('click', (e)=>{
+    const btn = e.currentTarget;
+    isPaused = !isPaused;
+    btn.textContent = isPaused ? 'Continue' : 'Pause';
+    if (isPaused) {
+      tryCall(window.pauseSketch, true) || tryCall(window.resumeSketch, false);
+    } else {
+      tryCall(window.pauseSketch, false) || tryCall(window.resumeSketch, true);
+    }
+  });
+
+  /* 返回顶部：先重置画布，再回顶 */
+  document.getElementById('toTopBtn')?.addEventListener('click', ()=>{
+    tryCall(window.resetSketch);
+    safeResetCanvas();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* === 全局持续漂浮装饰（每个 .float-deco 随机位置/大小/角度 + 缓慢漂浮） === */
+  document.querySelectorAll('.float-deco').forEach(el=>{
+    const randX = gsap.utils.random(5, 85);     // 视口左右位置（vw）
+    const randY = gsap.utils.random(5, 85);     // 视口上下位置（vh）
+    const randRot = gsap.utils.random(-30, 30);
+    const randDelay = gsap.utils.random(0, 5);
+    const randScale = gsap.utils.random(0.85, 1.25);
+
+    gsap.set(el, {
+      left: `${randX}vw`,
+      top:  `${randY}vh`,
+      rotation: randRot,
+      scale: randScale
+    });
+
+    gsap.to(el, {
+      y: gsap.utils.random(-20, 20),
+      rotation: `+=${gsap.utils.random(8,20)}`,
+      duration: gsap.utils.random(9,14),
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+      delay: randDelay
+    });
+  });
+
+});
+</script>
+</body>
+</html>
+
+
